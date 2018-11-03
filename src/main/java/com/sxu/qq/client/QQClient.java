@@ -34,9 +34,9 @@ public class QQClient implements Closeable {
 	// Nginx错误重试次数
 	private static int retryTimesOnFailed = 3;
 	// 消息ID
-	private static long MESSAGE_ID = 66666666;
+	private static long MESSAGE_ID = 43690001;
 	// 客户端ID
-	private static final long Client_ID = 88888888;
+	private static final long Client_ID = 53999199;
 	// 消息发送失败重试次数
 	private static final long RETRY_TIMES = 5;
 	// 客户端
@@ -58,28 +58,28 @@ public class QQClient implements Closeable {
 		this.session = client.session();
 		login();
 		if (callback != null) {
-            this.pollStarted = true;
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    while (true) {
-                        if (!pollStarted) {
-                            return;
-                        }
-                        try {
-                            pollMessage(callback);
-                        } catch (RequestException e) {
-                            //忽略SocketTimeoutException
-                            if (!(e.getCause() instanceof SocketTimeoutException)) {
-                                LOGGER.error(e.getMessage());
-                            }
-                        } catch (Exception e) {
-                            LOGGER.error(e.getMessage());
-                        }
-                    }
-                }
-            }).start();
-        }
+			this.pollStarted = true;
+			new Thread(new Runnable() {
+				@Override
+				public void run() {
+					while (true) {
+						if (!pollStarted) {
+							return;
+						}
+						try {
+							pollMessage(callback);
+						} catch (RequestException e) {
+							// 忽略SocketTimeoutException
+							if (!(e.getCause() instanceof SocketTimeoutException)) {
+								LOGGER.error(e.getMessage());
+							}
+						} catch (Exception e) {
+							LOGGER.error(e.getMessage());
+						}
+					}
+				}
+			}).start();
+		}
 	}
 
 	private void login() {
@@ -89,9 +89,9 @@ public class QQClient implements Closeable {
 		getVfwebqq();
 		getUinAndPsessionid();
 		getFriendStatus();
-		//登陆成功欢迎
+		// 登陆成功欢迎
 		UserInfo userInfo = getAccountInfo();
-		LOGGER.info(userInfo.getNick()+"，欢迎！");
+		LOGGER.info(userInfo.getNick() + "，欢迎！");
 	}
 
 	// 登录流程1：获取二维码
@@ -101,7 +101,9 @@ public class QQClient implements Closeable {
 		String filePath;
 
 		try {
-			filePath = new File("qrcode.png").getCanonicalPath();
+			String curPath = System.getProperty("user.dir")+"//file//";
+			filePath = new File(curPath+"qrcode.png").getCanonicalPath();
+			LOGGER.debug("filePath:" + filePath);
 		} catch (IOException e) {
 			throw new IllegalStateException("二维码保存失败");
 		}
@@ -161,59 +163,63 @@ public class QQClient implements Closeable {
 	private void getUinAndPsessionid() {
 		LOGGER.debug("开始获取uin和psessionid");
 
-        JSONObject r = new JSONObject();
-        r.put("ptwebqq", ptwebqq);
-        r.put("clientid", Client_ID);
-        r.put("psessionid", "");
-        r.put("status", "online");
+		JSONObject r = new JSONObject();
+		r.put("ptwebqq", ptwebqq);
+		r.put("clientid", Client_ID);
+		r.put("psessionid", "");
+		r.put("status", "online");
 
-        Response<String> response = post(ApiURL.GET_UIN_AND_PSESSIONID, r);
-        JSONObject result = getJsonObjectResult(response);
-        this.psessionid = result.getString("psessionid");
-        this.uin = result.getLongValue("uin");
+		Response<String> response = post(ApiURL.GET_UIN_AND_PSESSIONID, r);
+		JSONObject result = getJsonObjectResult(response);
+		this.psessionid = result.getString("psessionid");
+		this.uin = result.getLongValue("uin");
 	}
-	//获得好友状态
+
+	// 获得好友状态
 	public List<FriendStatus> getFriendStatus() {
-        LOGGER.debug("开始获取好友状态");
-        Response<String> response = get(ApiURL.GET_FRIEND_STATUS, vfwebqq, psessionid);
-        return JSON.parseArray(getJsonArrayResult(response).toJSONString(), FriendStatus.class);
-    }
-	//获取登录用户信息
+		LOGGER.debug("开始获取好友状态");
+		Response<String> response = get(ApiURL.GET_FRIEND_STATUS, vfwebqq, psessionid);
+		return JSON.parseArray(getJsonArrayResult(response).toJSONString(), FriendStatus.class);
+	}
+
+	// 获取登录用户信息
 	public UserInfo getAccountInfo() {
-        LOGGER.debug("开始获取登录用户信息");
+		LOGGER.debug("开始获取登录用户信息");
 
-        Response<String> response = get(ApiURL.GET_ACCOUNT_INFO);
-        int retryTimes4AccountInfo = retryTimesOnFailed;
-        while (response.getStatusCode() == 404 && retryTimes4AccountInfo > 0) {
-            response = get(ApiURL.GET_ACCOUNT_INFO);
-            retryTimes4AccountInfo--;
-        }
-        return JSON.parseObject(getJsonObjectResult(response).toJSONString(), UserInfo.class);
-    }
-	//拉取消息
-    private void pollMessage(MessageCallback callback) {
-        LOGGER.debug("开始接收消息");
+		Response<String> response = get(ApiURL.GET_ACCOUNT_INFO);
+		int retryTimes4AccountInfo = retryTimesOnFailed;
+		while (response.getStatusCode() == 404 && retryTimes4AccountInfo > 0) {
+			response = get(ApiURL.GET_ACCOUNT_INFO);
+			retryTimes4AccountInfo--;
+		}
+		return JSON.parseObject(getJsonObjectResult(response).toJSONString(), UserInfo.class);
+	}
 
-        JSONObject r = new JSONObject();
-        r.put("ptwebqq", ptwebqq);
-        r.put("clientid", Client_ID);
-        r.put("psessionid", psessionid);
-        r.put("key", "");
+	// 拉取消息
+	private void pollMessage(MessageCallback callback) {
+		LOGGER.debug("开始接收消息");
 
-        Response<String> response = post(ApiURL.POLL_MESSAGE, r);
-        JSONArray array = getJsonArrayResult(response);
-        for (int i = 0; array != null && i < array.size(); i++) {
-            JSONObject message = array.getJSONObject(i);
-            String type = message.getString("poll_type");
-            if ("message".equals(type)) {
-                callback.onMessage(new Message(message.getJSONObject("value")));
-            } else if ("group_message".equals(type)) {
-                callback.onGroupMessage(new GroupMessage(message.getJSONObject("value")));
-            } else if ("discu_message".equals(type)) {
-                callback.onDiscussMessage(new DiscussMessage(message.getJSONObject("value")));
-            }
-        }
-    }
+		JSONObject r = new JSONObject();
+		r.put("ptwebqq", ptwebqq);
+		r.put("clientid", Client_ID);
+		r.put("psessionid", psessionid);
+		r.put("key", "");
+
+		Response<String> response = post(ApiURL.POLL_MESSAGE, r);
+		JSONArray array = getJsonArrayResult(response);
+		for (int i = 0; array != null && i < array.size(); i++) {
+			JSONObject message = array.getJSONObject(i);
+			String type = message.getString("poll_type");
+			if ("message".equals(type)) {
+				callback.onMessage(new Message(message.getJSONObject("value")));
+			} else if ("group_message".equals(type)) {
+				callback.onGroupMessage(new GroupMessage(message.getJSONObject("value")));
+			} else if ("discu_message".equals(type)) {
+				callback.onDiscussMessage(new DiscussMessage(message.getJSONObject("value")));
+			}
+		}
+	}
+
 	// 用于生成ptqrtoken的哈希函数
 	private static int hash33(String s) {
 		int e = 0, n = s.length();
@@ -286,9 +292,9 @@ public class QQClient implements Closeable {
 	@Override
 	public void close() throws IOException {
 		this.pollStarted = false;
-        if (this.client != null) {
-            this.client.close();
-        }
+		if (this.client != null) {
+			this.client.close();
+		}
 	}
 
 }
